@@ -2,6 +2,8 @@
 
 A beautiful, interactive web application for tracking your favorite meals, designing custom recipes, and managing ingredients.
 
+**🌐 Live Site:** [https://jschwartz1313.github.io/Meal-Creator/](https://jschwartz1313.github.io/Meal-Creator/)
+
 ## Features
 
 ### 🍽️ Meal Tracking
@@ -31,9 +33,14 @@ A beautiful, interactive web application for tracking your favorite meals, desig
 
 ## Getting Started
 
-1. Open [index.html](index.html) in a web browser
-2. Start tracking your meals, creating recipes, or adding ingredients
-3. Your data will be automatically saved
+### Online (Recommended)
+Visit the live site at [https://jschwartz1313.github.io/Meal-Creator/](https://jschwartz1313.github.io/Meal-Creator/)
+
+### Local Development
+1. Clone this repository
+2. Open [index.html](index.html) in a web browser
+3. Start tracking your meals, creating recipes, or adding ingredients
+4. Your data will be automatically saved
 
 ## Usage
 
