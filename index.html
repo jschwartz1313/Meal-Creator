@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meal Creator - Track Meals & Recipes</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🍽️ Meal Creator</h1>
+            <p class="tagline">Track your favorite meals, create recipes, and manage ingredients</p>
+        </div>
+    </header>
+
+    <nav class="tabs">
+        <div class="container">
+            <button class="tab-btn active" data-tab="meals">My Meals</button>
+            <button class="tab-btn" data-tab="recipes">Recipes</button>
+            <button class="tab-btn" data-tab="ingredients">Ingredients</button>
+        </div>
+    </nav>
+
+    <main class="container">
+        <!-- Meals Tab -->
+        <section id="meals-tab" class="tab-content active">
+            <div class="section-header">
+                <h2>My Favorite Meals</h2>
+                <button class="btn btn-primary" id="add-meal-btn">+ Add Meal</button>
+            </div>
+            <div id="meals-list" class="cards-grid"></div>
+        </section>
+
+        <!-- Recipes Tab -->
+        <section id="recipes-tab" class="tab-content">
+            <div class="section-header">
+                <h2>My Recipes</h2>
+                <button class="btn btn-primary" id="add-recipe-btn">+ Create Recipe</button>
+            </div>
+            <div id="recipes-list" class="cards-grid"></div>
+        </section>
+
+        <!-- Ingredients Tab -->
+        <section id="ingredients-tab" class="tab-content">
+            <div class="section-header">
+                <h2>Ingredients Library</h2>
+                <button class="btn btn-primary" id="add-ingredient-btn">+ Add Ingredient</button>
+            </div>
+            <div class="search-box">
+                <input type="text" id="ingredient-search" placeholder="Search ingredients...">
+            </div>
+            <div id="ingredients-list" class="ingredients-container"></div>
+        </section>
+    </main>
+
+    <!-- Modal for Adding/Editing Meal -->
+    <div id="meal-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="meal-modal-title">Add Meal</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="meal-form">
+                <div class="form-group">
+                    <label for="meal-name">Meal Name</label>
+                    <input type="text" id="meal-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="meal-category">Category</label>
+                    <select id="meal-category">
+                        <option value="breakfast">Breakfast</option>
+                        <option value="lunch">Lunch</option>
+                        <option value="dinner">Dinner</option>
+                        <option value="snack">Snack</option>
+                        <option value="dessert">Dessert</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="meal-rating">Rating</label>
+                    <div class="rating-input">
+                        <span class="star" data-rating="1">☆</span>
+                        <span class="star" data-rating="2">☆</span>
+                        <span class="star" data-rating="3">☆</span>
+                        <span class="star" data-rating="4">☆</span>
+                        <span class="star" data-rating="5">☆</span>
+                    </div>
+                    <input type="hidden" id="meal-rating" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="meal-notes">Notes</label>
+                    <textarea id="meal-notes" rows="3"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary cancel-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Meal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Adding/Editing Recipe -->
+    <div id="recipe-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="recipe-modal-title">Create Recipe</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="recipe-form">
+                <div class="form-group">
+                    <label for="recipe-name">Recipe Name</label>
+                    <input type="text" id="recipe-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="recipe-servings">Servings</label>
+                    <input type="number" id="recipe-servings" min="1" value="4">
+                </div>
+                <div class="form-group">
+                    <label for="recipe-prep-time">Prep Time (minutes)</label>
+                    <input type="number" id="recipe-prep-time" min="0" value="15">
+                </div>
+                <div class="form-group">
+                    <label for="recipe-cook-time">Cook Time (minutes)</label>
+                    <input type="number" id="recipe-cook-time" min="0" value="30">
+                </div>
+                <div class="form-group">
+                    <label>Ingredients</label>
+                    <div id="recipe-ingredients-list"></div>
+                    <button type="button" class="btn btn-secondary btn-sm" id="add-recipe-ingredient-btn">+ Add Ingredient</button>
+                </div>
+                <div class="form-group">
+                    <label for="recipe-instructions">Instructions</label>
+                    <textarea id="recipe-instructions" rows="6" required></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary cancel-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Recipe</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Adding/Editing Ingredient -->
+    <div id="ingredient-modal" class="modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h3 id="ingredient-modal-title">Add Ingredient</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="ingredient-form">
+                <div class="form-group">
+                    <label for="ingredient-name">Ingredient Name</label>
+                    <input type="text" id="ingredient-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="ingredient-category">Category</label>
+                    <select id="ingredient-category">
+                        <option value="produce">Produce</option>
+                        <option value="protein">Protein</option>
+                        <option value="dairy">Dairy</option>
+                        <option value="grains">Grains</option>
+                        <option value="spices">Spices & Herbs</option>
+                        <option value="condiments">Condiments</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary cancel-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Ingredient</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
