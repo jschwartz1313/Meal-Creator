@@ -77,6 +77,7 @@ class DataStore {
 const store = new DataStore();
 let currentEditId = null;
 let currentEditType = null;
+let mealIngredients = [];
 
 // Tab Navigation
 const tabBtns = document.querySelectorAll('.tab-btn');
@@ -101,15 +102,24 @@ const mealModal = document.getElementById('meal-modal');
 const mealForm = document.getElementById('meal-form');
 const addMealBtn = document.getElementById('add-meal-btn');
 const mealsList = document.getElementById('meals-list');
+const mealIngredientsList = document.getElementById('meal-ingredients-list');
+const addMealIngredientBtn = document.getElementById('add-meal-ingredient-btn');
 
 addMealBtn.addEventListener('click', () => {
     currentEditId = null;
     currentEditType = 'meal';
+    mealIngredients = [];
     document.getElementById('meal-modal-title').textContent = 'Add Meal';
     mealForm.reset();
     document.getElementById('meal-rating').value = '0';
     updateStarRating(0);
+    renderMealIngredients();
     openModal(mealModal);
+});
+
+addMealIngredientBtn.addEventListener('click', () => {
+    mealIngredients.push('');
+    renderMealIngredients();
 });
 
 // Star Rating
@@ -134,6 +144,36 @@ function updateStarRating(rating) {
     });
 }
 
+function renderMealIngredients() {
+    mealIngredientsList.innerHTML = '';
+
+    mealIngredients.forEach((ingredient, index) => {
+        const row = document.createElement('div');
+        row.className = 'meal-ingredient-row';
+        row.innerHTML = `
+            <input type="text" placeholder="Ingredient name" value="${ingredient}" data-index="${index}" class="meal-ingredient-input">
+            <button type="button" class="remove-ingredient-btn" data-index="${index}">×</button>
+        `;
+        mealIngredientsList.appendChild(row);
+    });
+
+    // Add event listeners
+    document.querySelectorAll('.meal-ingredient-input').forEach(input => {
+        input.addEventListener('input', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            mealIngredients[index] = e.target.value;
+        });
+    });
+
+    document.querySelectorAll('.meal-ingredient-row .remove-ingredient-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            mealIngredients.splice(index, 1);
+            renderMealIngredients();
+        });
+    });
+}
+
 mealForm.addEventListener('submit', (e) => {
     e.preventDefault();
 
@@ -141,6 +181,7 @@ mealForm.addEventListener('submit', (e) => {
         name: document.getElementById('meal-name').value,
         category: document.getElementById('meal-category').value,
         rating: parseInt(document.getElementById('meal-rating').value),
+        ingredients: mealIngredients.filter(ing => ing.trim() !== ''),
         notes: document.getElementById('meal-notes').value
     };
 
@@ -173,6 +214,15 @@ function renderMeals() {
 
         const stars = '★'.repeat(meal.rating) + '☆'.repeat(5 - meal.rating);
 
+        const ingredientsHTML = meal.ingredients && meal.ingredients.length > 0 ? `
+            <div class="recipe-ingredients">
+                <h4>Ingredients:</h4>
+                <ul>
+                    ${meal.ingredients.map(ing => `<li>${ing}</li>`).join('')}
+                </ul>
+            </div>
+        ` : '';
+
         card.innerHTML = `
             <div class="card-header">
                 <div>
@@ -185,6 +235,7 @@ function renderMeals() {
                 </div>
             </div>
             <div class="rating">${stars}</div>
+            ${ingredientsHTML}
             ${meal.notes ? `<div class="card-notes">${meal.notes}</div>` : ''}
         `;
 
@@ -212,6 +263,7 @@ function editMeal(id) {
 
     currentEditId = id;
     currentEditType = 'meal';
+    mealIngredients = meal.ingredients ? [...meal.ingredients] : [];
 
     document.getElementById('meal-modal-title').textContent = 'Edit Meal';
     document.getElementById('meal-name').value = meal.name;
@@ -219,6 +271,7 @@ function editMeal(id) {
     document.getElementById('meal-rating').value = meal.rating;
     document.getElementById('meal-notes').value = meal.notes || '';
     updateStarRating(meal.rating);
+    renderMealIngredients();
 
     openModal(mealModal);
 }

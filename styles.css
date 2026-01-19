@@ -493,14 +493,16 @@ form {
 }
 
 /* Recipe Ingredients Input */
-.recipe-ingredient-row {
+.recipe-ingredient-row,
+.meal-ingredient-row {
     display: flex;
     gap: 0.5rem;
     margin-bottom: 0.5rem;
     align-items: center;
 }
 
-.recipe-ingredient-row input {
+.recipe-ingredient-row input,
+.meal-ingredient-row input {
     padding: 0.5rem;
     border: 2px solid var(--border-color);
     border-radius: 6px;
@@ -512,6 +514,10 @@ form {
 }
 
 .recipe-ingredient-row input:last-child {
+    flex: 1;
+}
+
+.meal-ingredient-row input {
     flex: 1;
 }
 
