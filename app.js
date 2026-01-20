@@ -1269,14 +1269,20 @@ function renderMealPlanner() {
                 ${days[i]}
                 <span class="planner-day-date">${currentDay.getDate()}</span>
             </div>
-            ${['breakfast', 'lunch', 'dinner'].map(type => `
-                <div class="planner-meal-slot ${meals[type] ? '' : 'empty'}" data-date="${dateStr}" data-type="${type}">
-                    ${meals[type] ? `
-                        <div class="planner-meal-name">${meals[type].name}</div>
+            ${['breakfast', 'lunch', 'dinner'].map(type => {
+                const mealData = meals[type];
+                const noteKey = `${dateStr}-${type}-note`;
+                const note = store.mealPlan[noteKey] || '';
+                return `
+                <div class="planner-meal-slot ${mealData ? '' : 'empty'}" data-date="${dateStr}" data-type="${type}">
+                    ${mealData ? `
+                        <div class="planner-meal-name">${mealData.name}</div>
                         <div class="planner-meal-type">${type}</div>
+                        ${note ? `<div class="planner-note-preview">${note}</div>` : ''}
+                        <button class="planner-note-btn" data-date="${dateStr}" data-type="${type}" onclick="event.stopPropagation()">📝</button>
                     ` : `+ Add ${type}`}
                 </div>
-            `).join('')}
+            `}).join('')}
         `;
 
         plannerGrid.appendChild(dayDiv);
@@ -1290,6 +1296,33 @@ function renderMealPlanner() {
             showPlannerModal(date, type);
         });
     });
+
+    // Add click listeners to note buttons
+    document.querySelectorAll('.planner-note-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const date = btn.dataset.date;
+            const type = btn.dataset.type;
+            editPlannerNote(date, type);
+        });
+    });
+}
+
+function editPlannerNote(date, mealType) {
+    const noteKey = `${date}-${mealType}-note`;
+    const currentNote = store.mealPlan[noteKey] || '';
+
+    const newNote = prompt(`Add note for ${mealType} on ${date}:`, currentNote);
+
+    if (newNote !== null) {
+        if (newNote.trim() === '') {
+            delete store.mealPlan[noteKey];
+        } else {
+            store.mealPlan[noteKey] = newNote.trim();
+        }
+        store.saveData('mealPlan', store.mealPlan);
+        renderMealPlanner();
+    }
 }
 
 function showPlannerModal(date, mealType) {
