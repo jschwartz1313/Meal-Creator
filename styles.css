@@ -368,16 +368,69 @@ main {
     color: var(--secondary-color);
     margin: 0.5rem 0;
     font-style: italic;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
 }
 
 .times-made {
     color: #636e72;
-    margin-left: 0.5rem;
+    margin-left: 0.25rem;
+}
+
+body.dark-mode .times-made {
+    color: #a0aec0;
+}
+
+.edit-history-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 0.15rem 0.3rem;
+    border-radius: 4px;
+    opacity: 0.6;
+    transition: opacity 0.2s, background-color 0.2s;
+    margin-left: 0.25rem;
+}
+
+.edit-history-btn:hover {
+    opacity: 1;
+    background-color: var(--border-color);
 }
 
 .mark-made-btn {
     margin-top: 1rem;
     width: 100%;
+}
+
+/* Number Input Group */
+.number-input-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.number-input-group input {
+    width: 80px;
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.number-input-group button {
+    width: 36px;
+    height: 36px;
+    font-size: 1.2rem;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#clear-last-made {
+    margin-top: 0.5rem;
 }
 
 /* Random Meal Display */

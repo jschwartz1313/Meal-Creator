@@ -399,6 +399,7 @@ function renderMeals() {
             <div class="last-made">
                 Last made: ${getTimeAgo(meal.lastMade)}
                 ${meal.timesMade ? `<span class="times-made">(${meal.timesMade}x total)</span>` : ''}
+                <button class="edit-history-btn" data-id="${meal.id}" title="Edit history">✏️</button>
             </div>
         ` : '';
 
@@ -453,6 +454,13 @@ function renderMeals() {
     document.querySelectorAll('.mark-made-btn').forEach(btn => {
         btn.addEventListener('click', () => markMealAsMade(parseInt(btn.dataset.id)));
     });
+
+    document.querySelectorAll('.edit-history-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openMealHistoryModal(parseInt(btn.dataset.id));
+        });
+    });
 }
 
 function getTimeAgo(dateString) {
@@ -479,6 +487,74 @@ function markMealAsMade(id) {
     });
     renderMeals();
 }
+
+// Meal History Editing
+let currentHistoryMealId = null;
+const mealHistoryModal = document.getElementById('meal-history-modal');
+const mealHistoryForm = document.getElementById('meal-history-form');
+const historyTimesMadeInput = document.getElementById('history-times-made');
+const historyLastMadeInput = document.getElementById('history-last-made');
+
+function openMealHistoryModal(id) {
+    const meal = store.meals.find(m => m.id === id);
+    if (!meal) return;
+
+    currentHistoryMealId = id;
+
+    // Set current values
+    historyTimesMadeInput.value = meal.timesMade || 0;
+
+    if (meal.lastMade) {
+        // Convert ISO date to YYYY-MM-DD format for date input
+        const date = new Date(meal.lastMade);
+        historyLastMadeInput.value = date.toISOString().split('T')[0];
+    } else {
+        historyLastMadeInput.value = '';
+    }
+
+    openModal(mealHistoryModal);
+}
+
+document.getElementById('times-made-decrease').addEventListener('click', () => {
+    const current = parseInt(historyTimesMadeInput.value) || 0;
+    if (current > 0) {
+        historyTimesMadeInput.value = current - 1;
+    }
+});
+
+document.getElementById('times-made-increase').addEventListener('click', () => {
+    const current = parseInt(historyTimesMadeInput.value) || 0;
+    historyTimesMadeInput.value = current + 1;
+});
+
+document.getElementById('clear-last-made').addEventListener('click', () => {
+    historyLastMadeInput.value = '';
+});
+
+mealHistoryForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    if (!currentHistoryMealId) return;
+
+    const timesMade = parseInt(historyTimesMadeInput.value) || 0;
+    const lastMadeDate = historyLastMadeInput.value;
+
+    const updateData = {
+        timesMade: timesMade
+    };
+
+    if (lastMadeDate) {
+        // Convert date input to ISO string (at start of day in local timezone)
+        updateData.lastMade = new Date(lastMadeDate + 'T12:00:00').toISOString();
+    } else {
+        updateData.lastMade = null;
+    }
+
+    store.updateMeal(currentHistoryMealId, updateData);
+    closeModal(mealHistoryModal);
+    currentHistoryMealId = null;
+    renderMeals();
+});
 
 function toggleMealFavorite(id) {
     const meal = store.meals.find(m => m.id === id);
