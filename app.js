@@ -758,6 +758,8 @@ function renderRecipes() {
                 <div class="card-actions">
                     <button class="icon-btn favorite-recipe" data-id="${recipe.id}">${recipe.favorite ? '★' : '☆'}</button>
                     <button class="icon-btn timer-recipe" data-id="${recipe.id}" data-time="${recipe.cookTime}" data-name="${recipe.name}">⏱️</button>
+                    <button class="icon-btn review-recipe" data-id="${recipe.id}" title="Add review">📝</button>
+                    <button class="icon-btn share-recipe" data-id="${recipe.id}" title="Share">🔗</button>
                     <button class="icon-btn print-recipe" data-id="${recipe.id}">🖨️</button>
                     <button class="icon-btn duplicate-recipe" data-id="${recipe.id}">📋</button>
                     <button class="icon-btn edit-recipe" data-id="${recipe.id}">✏️</button>
@@ -826,6 +828,17 @@ function renderRecipes() {
             const time = parseInt(btn.dataset.time) || 30;
             const name = btn.dataset.name;
             openTimer(time, name);
+        });
+    });
+
+    document.querySelectorAll('.review-recipe').forEach(btn => {
+        btn.addEventListener('click', () => openReviewModal(parseInt(btn.dataset.id)));
+    });
+
+    document.querySelectorAll('.share-recipe').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const recipe = store.recipes.find(r => r.id === parseInt(btn.dataset.id));
+            if (recipe) shareItem(recipe, 'recipe');
         });
     });
 }
@@ -1647,9 +1660,451 @@ darkModeToggle.addEventListener('click', () => {
     darkModeToggle.textContent = isDark ? '☀️' : '🌙';
 });
 
+// Recipe Reviews System
+let currentReviewRecipeId = null;
+const reviewModal = document.getElementById('review-modal');
+const reviewForm = document.getElementById('review-form');
+const reviewRatingInput = document.getElementById('review-rating');
+const reviewNotesInput = document.getElementById('review-notes');
+const reviewStars = document.querySelectorAll('.review-rating .star');
+
+reviewStars.forEach(star => {
+    star.addEventListener('click', () => {
+        const rating = parseInt(star.dataset.rating);
+        reviewRatingInput.value = rating;
+        updateReviewStars(rating);
+    });
+});
+
+function updateReviewStars(rating) {
+    reviewStars.forEach((star, index) => {
+        if (index < rating) {
+            star.classList.add('active');
+            star.textContent = '★';
+        } else {
+            star.classList.remove('active');
+            star.textContent = '☆';
+        }
+    });
+}
+
+function openReviewModal(recipeId) {
+    currentReviewRecipeId = recipeId;
+    reviewRatingInput.value = 0;
+    reviewNotesInput.value = '';
+    updateReviewStars(0);
+    openModal(reviewModal);
+}
+
+reviewForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    if (!currentReviewRecipeId) return;
+
+    const recipe = store.recipes.find(r => r.id === currentReviewRecipeId);
+    if (!recipe) return;
+
+    const review = {
+        date: new Date().toISOString(),
+        rating: parseInt(reviewRatingInput.value) || 0,
+        notes: reviewNotesInput.value.trim()
+    };
+
+    if (!recipe.reviews) {
+        recipe.reviews = [];
+    }
+
+    recipe.reviews.push(review);
+
+    // Update times made for the recipe
+    store.updateRecipe(currentReviewRecipeId, {
+        reviews: recipe.reviews,
+        lastMade: new Date().toISOString(),
+        timesMade: (recipe.timesMade || 0) + 1
+    });
+
+    closeModal(reviewModal);
+    currentReviewRecipeId = null;
+    renderRecipes();
+    renderStats();
+});
+
+function getAverageRating(reviews) {
+    if (!reviews || reviews.length === 0) return 0;
+    const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
+    return (sum / reviews.length).toFixed(1);
+}
+
+// Cooking Stats
+function renderStats() {
+    const statsContainer = document.getElementById('stats-container');
+
+    const totalMeals = store.meals.length;
+    const totalRecipes = store.recipes.length;
+    const totalIngredients = store.ingredients.length;
+
+    // Calculate most cooked meals
+    const mealsByTimesMade = [...store.meals]
+        .filter(m => m.timesMade > 0)
+        .sort((a, b) => (b.timesMade || 0) - (a.timesMade || 0))
+        .slice(0, 5);
+
+    const recipesByTimesMade = [...store.recipes]
+        .filter(r => r.timesMade > 0)
+        .sort((a, b) => (b.timesMade || 0) - (a.timesMade || 0))
+        .slice(0, 5);
+
+    // Calculate category distribution
+    const categoryCount = {};
+    store.meals.forEach(meal => {
+        categoryCount[meal.category] = (categoryCount[meal.category] || 0) + 1;
+    });
+
+    // Calculate total cooking events
+    const totalCookingEvents = store.meals.reduce((acc, m) => acc + (m.timesMade || 0), 0) +
+        store.recipes.reduce((acc, r) => acc + (r.timesMade || 0), 0);
+
+    // Get recent activity
+    const allItems = [
+        ...store.meals.filter(m => m.lastMade).map(m => ({ ...m, type: 'meal' })),
+        ...store.recipes.filter(r => r.lastMade).map(r => ({ ...r, type: 'recipe' }))
+    ].sort((a, b) => new Date(b.lastMade) - new Date(a.lastMade)).slice(0, 5);
+
+    // Calculate favorites
+    const favoriteMeals = store.meals.filter(m => m.favorite).length;
+    const favoriteRecipes = store.recipes.filter(r => r.favorite).length;
+
+    statsContainer.innerHTML = `
+        <div class="stats-card">
+            <h3>📊 Overview</h3>
+            <div class="stats-grid-inner">
+                <div class="stat-item">
+                    <span class="stat-number">${totalMeals}</span>
+                    <span class="stat-label">Meals</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">${totalRecipes}</span>
+                    <span class="stat-label">Recipes</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">${totalIngredients}</span>
+                    <span class="stat-label">Ingredients</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">${totalCookingEvents}</span>
+                    <span class="stat-label">Times Cooked</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-card">
+            <h3>⭐ Favorites</h3>
+            <p>${favoriteMeals} favorite meals, ${favoriteRecipes} favorite recipes</p>
+        </div>
+
+        <div class="stats-card">
+            <h3>🏆 Most Cooked Meals</h3>
+            ${mealsByTimesMade.length > 0 ? `
+                <ul class="stats-list">
+                    ${mealsByTimesMade.map((m, i) => `
+                        <li>
+                            <span class="rank">#${i + 1}</span>
+                            <span class="name">${m.name}</span>
+                            <span class="count">${m.timesMade}x</span>
+                        </li>
+                    `).join('')}
+                </ul>
+            ` : '<p class="empty-stat">No meals cooked yet</p>'}
+        </div>
+
+        <div class="stats-card">
+            <h3>👨‍🍳 Most Cooked Recipes</h3>
+            ${recipesByTimesMade.length > 0 ? `
+                <ul class="stats-list">
+                    ${recipesByTimesMade.map((r, i) => `
+                        <li>
+                            <span class="rank">#${i + 1}</span>
+                            <span class="name">${r.name}</span>
+                            <span class="count">${r.timesMade}x</span>
+                        </li>
+                    `).join('')}
+                </ul>
+            ` : '<p class="empty-stat">No recipes cooked yet</p>'}
+        </div>
+
+        <div class="stats-card">
+            <h3>📁 Categories</h3>
+            ${Object.keys(categoryCount).length > 0 ? `
+                <ul class="stats-list">
+                    ${Object.entries(categoryCount)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([cat, count]) => `
+                            <li>
+                                <span class="name">${cat}</span>
+                                <span class="count">${count} meals</span>
+                            </li>
+                        `).join('')}
+                </ul>
+            ` : '<p class="empty-stat">No meals categorized yet</p>'}
+        </div>
+
+        <div class="stats-card">
+            <h3>🕐 Recent Activity</h3>
+            ${allItems.length > 0 ? `
+                <ul class="stats-list">
+                    ${allItems.map(item => `
+                        <li>
+                            <span class="name">${item.name}</span>
+                            <span class="count">${getTimeAgo(item.lastMade)}</span>
+                        </li>
+                    `).join('')}
+                </ul>
+            ` : '<p class="empty-stat">No recent activity</p>'}
+        </div>
+    `;
+}
+
+// Recipe Import
+const importRecipeBtn = document.getElementById('import-recipe-btn');
+const importRecipeModal = document.getElementById('import-recipe-modal');
+const parseRecipeBtn = document.getElementById('parse-recipe-btn');
+const importRecipeText = document.getElementById('import-recipe-text');
+
+importRecipeBtn.addEventListener('click', () => {
+    importRecipeText.value = '';
+    openModal(importRecipeModal);
+});
+
+parseRecipeBtn.addEventListener('click', () => {
+    const text = importRecipeText.value.trim();
+    if (!text) {
+        alert('Please paste some recipe text first');
+        return;
+    }
+
+    // Simple recipe parser
+    const lines = text.split('\n').filter(l => l.trim());
+
+    // Try to extract recipe name (first line or line before ingredients)
+    let name = lines[0] || 'Imported Recipe';
+
+    // Try to find ingredients section
+    const ingredientPatterns = [/ingredients?:?/i, /what you('ll)? need:?/i];
+    const instructionPatterns = [/instructions?:?/i, /directions?:?/i, /method:?/i, /steps?:?/i, /how to (make|prepare):?/i];
+
+    let ingredientStart = -1;
+    let instructionStart = -1;
+
+    lines.forEach((line, i) => {
+        if (ingredientStart === -1 && ingredientPatterns.some(p => p.test(line))) {
+            ingredientStart = i;
+        }
+        if (instructionStart === -1 && instructionPatterns.some(p => p.test(line))) {
+            instructionStart = i;
+        }
+    });
+
+    // Extract ingredients
+    let ingredients = [];
+    if (ingredientStart !== -1) {
+        const endIdx = instructionStart !== -1 && instructionStart > ingredientStart
+            ? instructionStart
+            : lines.length;
+
+        for (let i = ingredientStart + 1; i < endIdx; i++) {
+            const line = lines[i].trim();
+            if (line && !instructionPatterns.some(p => p.test(line))) {
+                // Try to parse quantity from ingredient
+                const match = line.match(/^([\d\/\.\s]+\s*(?:cup|cups|tbsp|tsp|oz|lb|g|kg|ml|l|piece|pieces)?s?)\s+(.+)$/i);
+                if (match) {
+                    ingredients.push({ quantity: match[1].trim(), name: match[2].trim() });
+                } else {
+                    ingredients.push({ quantity: '', name: line.replace(/^[-•*]\s*/, '') });
+                }
+            }
+        }
+    }
+
+    // Extract instructions
+    let instructions = '';
+    if (instructionStart !== -1) {
+        instructions = lines.slice(instructionStart + 1)
+            .map(l => l.trim())
+            .filter(l => l)
+            .join('\n');
+    }
+
+    // Pre-fill the recipe form
+    closeModal(importRecipeModal);
+
+    currentEditId = null;
+    currentEditType = 'recipe';
+    recipeIngredients = ingredients.length > 0 ? ingredients : [{ name: '', quantity: '' }];
+
+    document.getElementById('recipe-modal-title').textContent = 'Create Recipe';
+    recipeForm.reset();
+    document.getElementById('recipe-name').value = name.replace(/^#+\s*/, '').trim();
+    document.getElementById('recipe-instructions').value = instructions;
+
+    renderRecipeIngredients();
+    openModal(recipeModal);
+});
+
+// Recipe Suggestions
+function renderSuggestions() {
+    const suggestionsSection = document.getElementById('suggestions-section');
+    const suggestionsList = document.getElementById('suggestions-list');
+
+    if (store.recipes.length < 3) {
+        suggestionsSection.style.display = 'none';
+        return;
+    }
+
+    // Find recipes user hasn't made in a while or never made
+    const unmadeRecipes = store.recipes.filter(r => !r.timesMade || r.timesMade === 0);
+    const oldRecipes = store.recipes
+        .filter(r => r.lastMade)
+        .sort((a, b) => new Date(a.lastMade) - new Date(b.lastMade))
+        .slice(0, 3);
+
+    // Get user's favorite ingredients from most-made recipes
+    const topRecipes = store.recipes
+        .filter(r => r.timesMade > 0)
+        .sort((a, b) => b.timesMade - a.timesMade)
+        .slice(0, 3);
+
+    const favoriteIngredients = new Set();
+    topRecipes.forEach(r => {
+        if (r.ingredients) {
+            r.ingredients.forEach(ing => {
+                favoriteIngredients.add(ing.name.toLowerCase());
+            });
+        }
+    });
+
+    // Find recipes with matching ingredients
+    const matchingRecipes = store.recipes
+        .filter(r => !r.timesMade || r.timesMade === 0)
+        .filter(r => {
+            if (!r.ingredients) return false;
+            return r.ingredients.some(ing =>
+                favoriteIngredients.has(ing.name.toLowerCase())
+            );
+        })
+        .slice(0, 2);
+
+    // Combine suggestions
+    let suggestions = [...new Set([...matchingRecipes, ...unmadeRecipes.slice(0, 2), ...oldRecipes])].slice(0, 3);
+
+    if (suggestions.length === 0) {
+        suggestionsSection.style.display = 'none';
+        return;
+    }
+
+    suggestionsSection.style.display = 'block';
+    suggestionsList.innerHTML = suggestions.map(recipe => `
+        <div class="suggestion-card">
+            <div class="suggestion-name">${recipe.name}</div>
+            <div class="suggestion-reason">
+                ${!recipe.timesMade ? 'Never made - give it a try!' :
+                  recipe.lastMade ? `Last made ${getTimeAgo(recipe.lastMade)}` : 'Recommended for you'}
+            </div>
+        </div>
+    `).join('');
+}
+
+// Share Functionality
+const shareModal = document.getElementById('share-modal');
+const shareCodeTextarea = document.getElementById('share-code');
+const copyShareBtn = document.getElementById('copy-share-btn');
+
+function shareItem(item, type) {
+    const shareData = {
+        type: type,
+        data: item,
+        sharedAt: new Date().toISOString()
+    };
+
+    const encoded = btoa(JSON.stringify(shareData));
+    shareCodeTextarea.value = encoded;
+    openModal(shareModal);
+}
+
+copyShareBtn.addEventListener('click', () => {
+    shareCodeTextarea.select();
+    document.execCommand('copy');
+    copyShareBtn.textContent = '✓ Copied!';
+    setTimeout(() => {
+        copyShareBtn.textContent = '📋 Copy to Clipboard';
+    }, 2000);
+});
+
+// Import shared item
+function importSharedItem(code) {
+    try {
+        const decoded = JSON.parse(atob(code));
+
+        if (decoded.type === 'meal') {
+            const meal = { ...decoded.data, id: undefined };
+            store.addMeal(meal);
+            renderMeals();
+            alert(`Imported meal: ${meal.name}`);
+        } else if (decoded.type === 'recipe') {
+            const recipe = { ...decoded.data, id: undefined };
+            store.addRecipe(recipe);
+            renderRecipes();
+            alert(`Imported recipe: ${recipe.name}`);
+        }
+    } catch (e) {
+        alert('Invalid share code');
+    }
+}
+
+// Add share button functionality to cards - will be added via renderMeals/renderRecipes updates
+
+// Voice Input (if supported)
+const speechSupported = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+
+function startVoiceInput(targetInput) {
+    if (!speechSupported) {
+        alert('Voice input is not supported in your browser. Try Chrome or Edge.');
+        return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+        targetInput.placeholder = '🎤 Listening...';
+    };
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        targetInput.value = targetInput.value + ' ' + transcript;
+        targetInput.placeholder = targetInput.dataset.originalPlaceholder || '';
+    };
+
+    recognition.onerror = () => {
+        targetInput.placeholder = targetInput.dataset.originalPlaceholder || '';
+    };
+
+    recognition.onend = () => {
+        targetInput.placeholder = targetInput.dataset.originalPlaceholder || '';
+    };
+
+    targetInput.dataset.originalPlaceholder = targetInput.placeholder;
+    recognition.start();
+}
+
 // Initial Render
 renderMeals();
 renderRecipes();
 renderIngredients();
 renderMealPlanner();
 renderShoppingList();
+renderStats();
+renderSuggestions();
