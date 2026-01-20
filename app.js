@@ -338,6 +338,12 @@ function renderMeals() {
                     return b.id - a.id;
                 case 'oldest':
                     return a.id - b.id;
+                case 'recently-made':
+                    const aDate = a.lastMade ? new Date(a.lastMade) : new Date(0);
+                    const bDate = b.lastMade ? new Date(b.lastMade) : new Date(0);
+                    return bDate - aDate;
+                case 'most-made':
+                    return (b.timesMade || 0) - (a.timesMade || 0);
                 default:
                     return 0;
             }
@@ -389,6 +395,13 @@ function renderMeals() {
             </div>
         ` : '';
 
+        const lastMadeHTML = meal.lastMade ? `
+            <div class="last-made">
+                Last made: ${getTimeAgo(meal.lastMade)}
+                ${meal.timesMade ? `<span class="times-made">(${meal.timesMade}x total)</span>` : ''}
+            </div>
+        ` : '';
+
         card.innerHTML = `
             ${meal.photo ? `<img src="${meal.photo}" class="card-photo" alt="${meal.name}">` : ''}
             <div class="card-header">
@@ -404,10 +417,12 @@ function renderMeals() {
                 </div>
             </div>
             <div class="rating">${stars}</div>
+            ${lastMadeHTML}
             ${tagsHTML}
             ${nutritionHTML}
             ${ingredientsHTML}
             ${meal.notes ? `<div class="card-notes">${meal.notes}</div>` : ''}
+            <button class="btn btn-sm btn-secondary mark-made-btn" data-id="${meal.id}">✓ Made Today</button>
         `;
 
         mealsList.appendChild(card);
@@ -434,6 +449,35 @@ function renderMeals() {
             }
         });
     });
+
+    document.querySelectorAll('.mark-made-btn').forEach(btn => {
+        btn.addEventListener('click', () => markMealAsMade(parseInt(btn.dataset.id)));
+    });
+}
+
+function getTimeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? 's' : ''} ago`;
+    return `${Math.floor(diffDays / 365)} year${Math.floor(diffDays / 365) > 1 ? 's' : ''} ago`;
+}
+
+function markMealAsMade(id) {
+    const meal = store.meals.find(m => m.id === id);
+    if (!meal) return;
+
+    store.updateMeal(id, {
+        lastMade: new Date().toISOString(),
+        timesMade: (meal.timesMade || 0) + 1
+    });
+    renderMeals();
 }
 
 function toggleMealFavorite(id) {
@@ -575,6 +619,7 @@ recipeForm.addEventListener('submit', async (e) => {
         servings: parseInt(document.getElementById('recipe-servings').value),
         prepTime: parseInt(document.getElementById('recipe-prep-time').value),
         cookTime: parseInt(document.getElementById('recipe-cook-time').value),
+        difficulty: document.getElementById('recipe-difficulty').value,
         ingredients: recipeIngredients.filter(ing => ing.name.trim() !== ''),
         instructions: document.getElementById('recipe-instructions').value,
         photo: photo,
@@ -611,13 +656,17 @@ function renderRecipes() {
 
         const totalTime = recipe.prepTime + recipe.cookTime;
 
+        const difficultyLabel = recipe.difficulty || 'easy';
+
         card.innerHTML = `
             <div class="card-header">
                 <div>
                     <div class="card-title">${recipe.name}</div>
+                    <span class="difficulty-badge difficulty-${difficultyLabel}">${difficultyLabel}</span>
                 </div>
                 <div class="card-actions">
                     <button class="icon-btn favorite-recipe" data-id="${recipe.id}">${recipe.favorite ? '★' : '☆'}</button>
+                    <button class="icon-btn timer-recipe" data-id="${recipe.id}" data-time="${recipe.cookTime}" data-name="${recipe.name}">⏱️</button>
                     <button class="icon-btn print-recipe" data-id="${recipe.id}">🖨️</button>
                     <button class="icon-btn duplicate-recipe" data-id="${recipe.id}">📋</button>
                     <button class="icon-btn edit-recipe" data-id="${recipe.id}">✏️</button>
@@ -678,6 +727,14 @@ function renderRecipes() {
             const id = parseInt(btn.dataset.id);
             const action = btn.dataset.action;
             scaleRecipe(id, action);
+        });
+    });
+
+    document.querySelectorAll('.timer-recipe').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const time = parseInt(btn.dataset.time) || 30;
+            const name = btn.dataset.name;
+            openTimer(time, name);
         });
     });
 }
@@ -873,6 +930,7 @@ function editRecipe(id) {
     document.getElementById('recipe-servings').value = recipe.servings;
     document.getElementById('recipe-prep-time').value = recipe.prepTime;
     document.getElementById('recipe-cook-time').value = recipe.cookTime;
+    document.getElementById('recipe-difficulty').value = recipe.difficulty || 'easy';
     document.getElementById('recipe-instructions').value = recipe.instructions;
 
     renderRecipeIngredients();
@@ -1014,6 +1072,63 @@ document.querySelectorAll('.cancel-btn').forEach(btn => {
         closeModal(btn.closest('.modal'));
     });
 });
+
+// Random Meal Generator
+const randomMealBtn = document.getElementById('random-meal-btn');
+const randomMealModal = document.getElementById('random-meal-modal');
+const randomMealContent = document.getElementById('random-meal-content');
+const randomAnotherBtn = document.getElementById('random-another-btn');
+
+randomMealBtn.addEventListener('click', showRandomMeal);
+randomAnotherBtn.addEventListener('click', showRandomMeal);
+
+function showRandomMeal() {
+    const allItems = [...store.meals, ...store.recipes];
+
+    if (allItems.length === 0) {
+        randomMealContent.innerHTML = `
+            <div class="empty-state">
+                <p>No meals or recipes yet!</p>
+                <p>Add some meals first to get random suggestions.</p>
+            </div>
+        `;
+        openModal(randomMealModal);
+        return;
+    }
+
+    const randomItem = allItems[Math.floor(Math.random() * allItems.length)];
+    const isRecipe = store.recipes.some(r => r.id === randomItem.id);
+
+    const stars = randomItem.rating ? '★'.repeat(randomItem.rating) + '☆'.repeat(5 - randomItem.rating) : '';
+
+    randomMealContent.innerHTML = `
+        ${randomItem.photo ? `<img src="${randomItem.photo}" class="random-meal-photo" alt="${randomItem.name}">` : ''}
+        <h2 class="random-meal-title">${randomItem.name}</h2>
+        <span class="card-badge">${isRecipe ? 'Recipe' : randomItem.category || 'Meal'}</span>
+        ${stars ? `<div class="rating">${stars}</div>` : ''}
+        ${isRecipe ? `
+            <div class="recipe-meta">
+                <div class="recipe-meta-item">⏱️ ${randomItem.prepTime + randomItem.cookTime} min</div>
+                <div class="recipe-meta-item">🍽️ ${randomItem.servings} servings</div>
+            </div>
+        ` : ''}
+        ${randomItem.ingredients && randomItem.ingredients.length > 0 ? `
+            <div class="recipe-ingredients">
+                <h4>Ingredients:</h4>
+                <ul>
+                    ${randomItem.ingredients.slice(0, 5).map(ing => {
+                        const name = typeof ing === 'string' ? ing : (ing.quantity ? `${ing.quantity} ${ing.name}` : ing.name);
+                        return `<li>${name}</li>`;
+                    }).join('')}
+                    ${randomItem.ingredients.length > 5 ? `<li>...and ${randomItem.ingredients.length - 5} more</li>` : ''}
+                </ul>
+            </div>
+        ` : ''}
+        ${randomItem.notes ? `<div class="card-notes">${randomItem.notes}</div>` : ''}
+    `;
+
+    openModal(randomMealModal);
+}
 
 // Export/Import Functionality
 const exportDataBtn = document.getElementById('export-data-btn');
@@ -1286,6 +1401,110 @@ document.getElementById('clear-shopping-list-btn').addEventListener('click', () 
         store.updateShoppingList([]);
         renderShoppingList();
     }
+});
+
+// Cooking Timer
+const timerModal = document.getElementById('timer-modal');
+const timerTimeDisplay = document.getElementById('timer-time');
+const timerLabel = document.getElementById('timer-label');
+const timerMinutesInput = document.getElementById('timer-minutes');
+const timerStartBtn = document.getElementById('timer-start-btn');
+const timerPauseBtn = document.getElementById('timer-pause-btn');
+const timerResetBtn = document.getElementById('timer-reset-btn');
+const timerSetBtn = document.getElementById('timer-set-btn');
+
+let timerSeconds = 0;
+let timerInterval = null;
+let timerRunning = false;
+
+function openTimer(minutes, label = '') {
+    timerSeconds = minutes * 60;
+    timerLabel.textContent = label ? `Timer for: ${label}` : '';
+    updateTimerDisplay();
+    openModal(timerModal);
+}
+
+function updateTimerDisplay() {
+    const mins = Math.floor(timerSeconds / 60);
+    const secs = timerSeconds % 60;
+    timerTimeDisplay.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+function startTimer() {
+    if (timerSeconds <= 0) return;
+
+    timerRunning = true;
+    timerStartBtn.disabled = true;
+    timerPauseBtn.disabled = false;
+
+    timerInterval = setInterval(() => {
+        timerSeconds--;
+        updateTimerDisplay();
+
+        if (timerSeconds <= 0) {
+            clearInterval(timerInterval);
+            timerRunning = false;
+            timerStartBtn.disabled = false;
+            timerPauseBtn.disabled = true;
+            timerTimeDisplay.textContent = "00:00";
+
+            // Play alert sound and show notification
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+                gainNode.gain.value = 0.3;
+                oscillator.start();
+                setTimeout(() => oscillator.stop(), 500);
+            } catch (e) {
+                console.log('Audio not supported');
+            }
+
+            alert('Timer finished! Your cooking time is complete.');
+        }
+    }, 1000);
+}
+
+function pauseTimer() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    timerRunning = false;
+    timerStartBtn.disabled = false;
+    timerPauseBtn.disabled = true;
+}
+
+function resetTimer() {
+    pauseTimer();
+    timerSeconds = 0;
+    updateTimerDisplay();
+    timerLabel.textContent = '';
+}
+
+timerStartBtn.addEventListener('click', startTimer);
+timerPauseBtn.addEventListener('click', pauseTimer);
+timerResetBtn.addEventListener('click', resetTimer);
+
+timerSetBtn.addEventListener('click', () => {
+    const mins = parseInt(timerMinutesInput.value);
+    if (mins > 0) {
+        timerSeconds = mins * 60;
+        updateTimerDisplay();
+        timerMinutesInput.value = '';
+    }
+});
+
+document.querySelectorAll('.timer-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const mins = parseInt(btn.dataset.minutes);
+        timerSeconds = mins * 60;
+        updateTimerDisplay();
+    });
 });
 
 // Dark Mode
