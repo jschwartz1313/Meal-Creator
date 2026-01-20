@@ -19,6 +19,8 @@
             <button class="tab-btn active" data-tab="meals">My Meals</button>
             <button class="tab-btn" data-tab="recipes">Recipes</button>
             <button class="tab-btn" data-tab="ingredients">Ingredients</button>
+            <button class="tab-btn" data-tab="planner">Meal Planner</button>
+            <button class="tab-btn" data-tab="shopping">Shopping List</button>
         </div>
     </nav>
 
@@ -27,7 +29,29 @@
         <section id="meals-tab" class="tab-content active">
             <div class="section-header">
                 <h2>My Favorite Meals</h2>
-                <button class="btn btn-primary" id="add-meal-btn">+ Add Meal</button>
+                <div class="header-actions">
+                    <button class="btn btn-secondary btn-sm" id="export-data-btn">📥 Export Data</button>
+                    <button class="btn btn-secondary btn-sm" id="import-data-btn">📤 Import Data</button>
+                    <input type="file" id="import-file-input" accept=".json" style="display: none;">
+                    <button class="btn btn-primary" id="add-meal-btn">+ Add Meal</button>
+                </div>
+            </div>
+            <div class="filter-bar">
+                <input type="text" id="meal-search" placeholder="Search meals..." class="search-input">
+                <select id="meal-filter-category" class="filter-select">
+                    <option value="">All Categories</option>
+                    <option value="breakfast">Breakfast</option>
+                    <option value="lunch">Lunch</option>
+                    <option value="dinner">Dinner</option>
+                    <option value="snack">Snack</option>
+                    <option value="dessert">Dessert</option>
+                </select>
+                <select id="meal-filter-rating" class="filter-select">
+                    <option value="">All Ratings</option>
+                    <option value="5">5 Stars</option>
+                    <option value="4">4+ Stars</option>
+                    <option value="3">3+ Stars</option>
+                </select>
             </div>
             <div id="meals-list" class="cards-grid"></div>
         </section>
@@ -51,6 +75,31 @@
                 <input type="text" id="ingredient-search" placeholder="Search ingredients...">
             </div>
             <div id="ingredients-list" class="ingredients-container"></div>
+        </section>
+
+        <!-- Meal Planner Tab -->
+        <section id="planner-tab" class="tab-content">
+            <div class="section-header">
+                <h2>Weekly Meal Planner</h2>
+                <div class="planner-controls">
+                    <button class="btn btn-secondary btn-sm" id="prev-week-btn">← Previous Week</button>
+                    <span id="current-week-display"></span>
+                    <button class="btn btn-secondary btn-sm" id="next-week-btn">Next Week →</button>
+                </div>
+            </div>
+            <div id="meal-planner-grid" class="planner-grid"></div>
+        </section>
+
+        <!-- Shopping List Tab -->
+        <section id="shopping-tab" class="tab-content">
+            <div class="section-header">
+                <h2>Shopping List</h2>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" id="clear-shopping-list-btn">Clear All</button>
+                    <button class="btn btn-primary" id="generate-shopping-list-btn">Generate from Planner</button>
+                </div>
+            </div>
+            <div id="shopping-list-container" class="shopping-list"></div>
         </section>
     </main>
 
@@ -91,6 +140,36 @@
                     <label>Ingredients</label>
                     <div id="meal-ingredients-list"></div>
                     <button type="button" class="btn btn-secondary btn-sm" id="add-meal-ingredient-btn">+ Add Ingredient</button>
+                </div>
+                <div class="form-group">
+                    <label for="meal-photo">Photo</label>
+                    <input type="file" id="meal-photo" accept="image/*">
+                    <div id="meal-photo-preview" class="photo-preview"></div>
+                </div>
+                <div class="form-group">
+                    <label for="meal-tags">Tags (comma-separated)</label>
+                    <input type="text" id="meal-tags" placeholder="e.g., healthy, quick, vegetarian">
+                </div>
+                <div class="form-group">
+                    <label>Nutritional Information (optional)</label>
+                    <div class="nutrition-grid">
+                        <div class="nutrition-item">
+                            <label for="meal-calories">Calories</label>
+                            <input type="number" id="meal-calories" min="0" placeholder="kcal">
+                        </div>
+                        <div class="nutrition-item">
+                            <label for="meal-protein">Protein</label>
+                            <input type="number" id="meal-protein" min="0" step="0.1" placeholder="g">
+                        </div>
+                        <div class="nutrition-item">
+                            <label for="meal-carbs">Carbs</label>
+                            <input type="number" id="meal-carbs" min="0" step="0.1" placeholder="g">
+                        </div>
+                        <div class="nutrition-item">
+                            <label for="meal-fat">Fat</label>
+                            <input type="number" id="meal-fat" min="0" step="0.1" placeholder="g">
+                        </div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="meal-notes">Notes</label>
@@ -137,6 +216,36 @@
                     <label for="recipe-instructions">Instructions</label>
                     <textarea id="recipe-instructions" rows="6" required></textarea>
                 </div>
+                <div class="form-group">
+                    <label for="recipe-photo">Photo</label>
+                    <input type="file" id="recipe-photo" accept="image/*">
+                    <div id="recipe-photo-preview" class="photo-preview"></div>
+                </div>
+                <div class="form-group">
+                    <label for="recipe-tags">Tags (comma-separated)</label>
+                    <input type="text" id="recipe-tags" placeholder="e.g., italian, pasta, dinner">
+                </div>
+                <div class="form-group">
+                    <label>Nutritional Information per Serving (optional)</label>
+                    <div class="nutrition-grid">
+                        <div class="nutrition-item">
+                            <label for="recipe-calories">Calories</label>
+                            <input type="number" id="recipe-calories" min="0" placeholder="kcal">
+                        </div>
+                        <div class="nutrition-item">
+                            <label for="recipe-protein">Protein</label>
+                            <input type="number" id="recipe-protein" min="0" step="0.1" placeholder="g">
+                        </div>
+                        <div class="nutrition-item">
+                            <label for="recipe-carbs">Carbs</label>
+                            <input type="number" id="recipe-carbs" min="0" step="0.1" placeholder="g">
+                        </div>
+                        <div class="nutrition-item">
+                            <label for="recipe-fat">Fat</label>
+                            <input type="number" id="recipe-fat" min="0" step="0.1" placeholder="g">
+                        </div>
+                    </div>
+                </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary cancel-btn">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Recipe</button>
@@ -174,6 +283,20 @@
                     <button type="submit" class="btn btn-primary">Save Ingredient</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal for Adding Meal to Planner -->
+    <div id="planner-modal" class="modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h3>Add to Planner</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div id="planner-modal-content">
+                <p>Select a meal or recipe:</p>
+                <div id="planner-meal-select"></div>
+            </div>
         </div>
     </div>
 

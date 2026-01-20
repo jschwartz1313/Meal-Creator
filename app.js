@@ -4,6 +4,8 @@ class DataStore {
         this.meals = this.loadData('meals') || [];
         this.recipes = this.loadData('recipes') || [];
         this.ingredients = this.loadData('ingredients') || [];
+        this.mealPlan = this.loadData('mealPlan') || {};
+        this.shoppingList = this.loadData('shoppingList') || [];
     }
 
     loadData(key) {
@@ -70,6 +72,70 @@ class DataStore {
     deleteIngredient(id) {
         this.ingredients = this.ingredients.filter(i => i.id !== id);
         this.saveData('ingredients', this.ingredients);
+    }
+
+    // Meal Plan methods
+    addToMealPlan(date, mealType, item) {
+        const key = `${date}-${mealType}`;
+        this.mealPlan[key] = item;
+        this.saveData('mealPlan', this.mealPlan);
+    }
+
+    removeFromMealPlan(date, mealType) {
+        const key = `${date}-${mealType}`;
+        delete this.mealPlan[key];
+        this.saveData('mealPlan', this.mealPlan);
+    }
+
+    getMealPlanForDate(date) {
+        const meals = {};
+        ['breakfast', 'lunch', 'dinner'].forEach(type => {
+            const key = `${date}-${type}`;
+            if (this.mealPlan[key]) {
+                meals[type] = this.mealPlan[key];
+            }
+        });
+        return meals;
+    }
+
+    // Shopping List methods
+    updateShoppingList(items) {
+        this.shoppingList = items;
+        this.saveData('shoppingList', this.shoppingList);
+    }
+
+    // Export/Import
+    exportData() {
+        return JSON.stringify({
+            meals: this.meals,
+            recipes: this.recipes,
+            ingredients: this.ingredients,
+            mealPlan: this.mealPlan,
+            shoppingList: this.shoppingList,
+            exportDate: new Date().toISOString()
+        }, null, 2);
+    }
+
+    importData(jsonData) {
+        try {
+            const data = JSON.parse(jsonData);
+            this.meals = data.meals || [];
+            this.recipes = data.recipes || [];
+            this.ingredients = data.ingredients || [];
+            this.mealPlan = data.mealPlan || {};
+            this.shoppingList = data.shoppingList || [];
+
+            this.saveData('meals', this.meals);
+            this.saveData('recipes', this.recipes);
+            this.saveData('ingredients', this.ingredients);
+            this.saveData('mealPlan', this.mealPlan);
+            this.saveData('shoppingList', this.shoppingList);
+
+            return true;
+        } catch (error) {
+            console.error('Import error:', error);
+            return false;
+        }
     }
 }
 
@@ -196,8 +262,23 @@ function renderMealIngredients() {
     });
 }
 
-mealForm.addEventListener('submit', (e) => {
+mealForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    const photoInput = document.getElementById('meal-photo');
+    const photo = photoInput.files[0] ? await handlePhotoUpload(photoInput, 'meal-photo-preview') : (currentEditId ? store.meals.find(m => m.id === currentEditId)?.photo : null);
+
+    const tags = document.getElementById('meal-tags').value
+        .split(',')
+        .map(t => t.trim())
+        .filter(t => t !== '');
+
+    const nutrition = {
+        calories: parseInt(document.getElementById('meal-calories').value) || null,
+        protein: parseFloat(document.getElementById('meal-protein').value) || null,
+        carbs: parseFloat(document.getElementById('meal-carbs').value) || null,
+        fat: parseFloat(document.getElementById('meal-fat').value) || null
+    };
 
     const mealData = {
         name: document.getElementById('meal-name').value,
@@ -207,6 +288,9 @@ mealForm.addEventListener('submit', (e) => {
             const name = typeof ing === 'string' ? ing : ing.name;
             return name.trim() !== '';
         }),
+        photo: photo,
+        tags: tags,
+        nutrition: nutrition,
         notes: document.getElementById('meal-notes').value
     };
 
@@ -223,17 +307,30 @@ mealForm.addEventListener('submit', (e) => {
 function renderMeals() {
     mealsList.innerHTML = '';
 
-    if (store.meals.length === 0) {
+    // Apply filters
+    let filteredMeals = store.meals.filter(meal => {
+        const matchesSearch = !mealFilters.search ||
+            meal.name.toLowerCase().includes(mealFilters.search) ||
+            (meal.tags && meal.tags.some(tag => tag.toLowerCase().includes(mealFilters.search)));
+
+        const matchesCategory = !mealFilters.category || meal.category === mealFilters.category;
+
+        const matchesRating = !mealFilters.rating || meal.rating >= parseInt(mealFilters.rating);
+
+        return matchesSearch && matchesCategory && matchesRating;
+    });
+
+    if (filteredMeals.length === 0) {
         mealsList.innerHTML = `
             <div class="empty-state">
-                <p>No meals tracked yet!</p>
-                <p>Click "Add Meal" to start tracking your favorite meals.</p>
+                <p>No meals found!</p>
+                <p>${store.meals.length === 0 ? 'Click "Add Meal" to start tracking your favorite meals.' : 'Try adjusting your filters.'}</p>
             </div>
         `;
         return;
     }
 
-    store.meals.forEach(meal => {
+    filteredMeals.forEach(meal => {
         const card = document.createElement('div');
         card.className = 'card';
 
@@ -253,7 +350,23 @@ function renderMeals() {
             </div>
         ` : '';
 
+        const tagsHTML = meal.tags && meal.tags.length > 0 ? `
+            <div class="tags-container">
+                ${meal.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+            </div>
+        ` : '';
+
+        const nutritionHTML = meal.nutrition && (meal.nutrition.calories || meal.nutrition.protein || meal.nutrition.carbs || meal.nutrition.fat) ? `
+            <div class="nutrition-info">
+                ${meal.nutrition.calories ? `<span>🔥 ${meal.nutrition.calories} cal</span>` : ''}
+                ${meal.nutrition.protein ? `<span>💪 ${meal.nutrition.protein}g protein</span>` : ''}
+                ${meal.nutrition.carbs ? `<span>🌾 ${meal.nutrition.carbs}g carbs</span>` : ''}
+                ${meal.nutrition.fat ? `<span>🥑 ${meal.nutrition.fat}g fat</span>` : ''}
+            </div>
+        ` : '';
+
         card.innerHTML = `
+            ${meal.photo ? `<img src="${meal.photo}" class="card-photo" alt="${meal.name}">` : ''}
             <div class="card-header">
                 <div>
                     <div class="card-title">${meal.name}</div>
@@ -265,6 +378,8 @@ function renderMeals() {
                 </div>
             </div>
             <div class="rating">${stars}</div>
+            ${tagsHTML}
+            ${nutritionHTML}
             ${ingredientsHTML}
             ${meal.notes ? `<div class="card-notes">${meal.notes}</div>` : ''}
         `;
@@ -299,7 +414,19 @@ function editMeal(id) {
     document.getElementById('meal-name').value = meal.name;
     document.getElementById('meal-category').value = meal.category;
     document.getElementById('meal-rating').value = meal.rating;
+    document.getElementById('meal-tags').value = meal.tags ? meal.tags.join(', ') : '';
+    document.getElementById('meal-calories').value = meal.nutrition?.calories || '';
+    document.getElementById('meal-protein').value = meal.nutrition?.protein || '';
+    document.getElementById('meal-carbs').value = meal.nutrition?.carbs || '';
+    document.getElementById('meal-fat').value = meal.nutrition?.fat || '';
     document.getElementById('meal-notes').value = meal.notes || '';
+
+    if (meal.photo) {
+        document.getElementById('meal-photo-preview').innerHTML = `<img src="${meal.photo}" alt="Preview">`;
+    } else {
+        document.getElementById('meal-photo-preview').innerHTML = '';
+    }
+
     updateStarRating(meal.rating);
     renderMealIngredients();
 
@@ -369,8 +496,23 @@ function renderRecipeIngredients() {
     });
 }
 
-recipeForm.addEventListener('submit', (e) => {
+recipeForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    const photoInput = document.getElementById('recipe-photo');
+    const photo = photoInput.files[0] ? await handlePhotoUpload(photoInput, 'recipe-photo-preview') : (currentEditId ? store.recipes.find(r => r.id === currentEditId)?.photo : null);
+
+    const tags = document.getElementById('recipe-tags').value
+        .split(',')
+        .map(t => t.trim())
+        .filter(t => t !== '');
+
+    const nutrition = {
+        calories: parseInt(document.getElementById('recipe-calories').value) || null,
+        protein: parseFloat(document.getElementById('recipe-protein').value) || null,
+        carbs: parseFloat(document.getElementById('recipe-carbs').value) || null,
+        fat: parseFloat(document.getElementById('recipe-fat').value) || null
+    };
 
     const recipeData = {
         name: document.getElementById('recipe-name').value,
@@ -378,7 +520,10 @@ recipeForm.addEventListener('submit', (e) => {
         prepTime: parseInt(document.getElementById('recipe-prep-time').value),
         cookTime: parseInt(document.getElementById('recipe-cook-time').value),
         ingredients: recipeIngredients.filter(ing => ing.name.trim() !== ''),
-        instructions: document.getElementById('recipe-instructions').value
+        instructions: document.getElementById('recipe-instructions').value,
+        photo: photo,
+        tags: tags,
+        nutrition: nutrition
     };
 
     if (currentEditId) {
@@ -606,7 +751,268 @@ document.querySelectorAll('.cancel-btn').forEach(btn => {
     });
 });
 
+// Export/Import Functionality
+const exportDataBtn = document.getElementById('export-data-btn');
+const importDataBtn = document.getElementById('import-data-btn');
+const importFileInput = document.getElementById('import-file-input');
+
+exportDataBtn.addEventListener('click', () => {
+    const data = store.exportData();
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `meal-creator-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+});
+
+importDataBtn.addEventListener('click', () => {
+    importFileInput.click();
+});
+
+importFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const success = store.importData(event.target.result);
+            if (success) {
+                alert('Data imported successfully!');
+                renderMeals();
+                renderRecipes();
+                renderIngredients();
+            } else {
+                alert('Error importing data. Please check the file format.');
+            }
+        };
+        reader.readAsText(file);
+    }
+});
+
+// Search and Filter for Meals
+const mealSearch = document.getElementById('meal-search');
+const mealFilterCategory = document.getElementById('meal-filter-category');
+const mealFilterRating = document.getElementById('meal-filter-rating');
+
+let mealFilters = {
+    search: '',
+    category: '',
+    rating: ''
+};
+
+mealSearch.addEventListener('input', (e) => {
+    mealFilters.search = e.target.value.toLowerCase();
+    renderMeals();
+});
+
+mealFilterCategory.addEventListener('change', (e) => {
+    mealFilters.category = e.target.value;
+    renderMeals();
+});
+
+mealFilterRating.addEventListener('change', (e) => {
+    mealFilters.rating = e.target.value;
+    renderMeals();
+});
+
+// Photo Upload Handling
+function handlePhotoUpload(input, previewId) {
+    return new Promise((resolve) => {
+        const file = input.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const preview = document.getElementById(previewId);
+                preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                resolve(e.target.result);
+            };
+            reader.readAsDataURL(file);
+        } else {
+            resolve(null);
+        }
+    });
+}
+
+document.getElementById('meal-photo').addEventListener('change', (e) => {
+    handlePhotoUpload(e.target, 'meal-photo-preview');
+});
+
+document.getElementById('recipe-photo').addEventListener('change', (e) => {
+    handlePhotoUpload(e.target, 'recipe-photo-preview');
+});
+
+// Meal Planner
+let currentPlannerWeek = new Date();
+
+function renderMealPlanner() {
+    const plannerGrid = document.getElementById('meal-planner-grid');
+    const weekDisplay = document.getElementById('current-week-display');
+
+    const startOfWeek = new Date(currentPlannerWeek);
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(endOfWeek.getDate() + 6);
+
+    weekDisplay.textContent = `${startOfWeek.toLocaleDateString()} - ${endOfWeek.toLocaleDateString()}`;
+
+    plannerGrid.innerHTML = '';
+
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    for (let i = 0; i < 7; i++) {
+        const currentDay = new Date(startOfWeek);
+        currentDay.setDate(currentDay.getDate() + i);
+        const dateStr = currentDay.toISOString().split('T')[0];
+
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'planner-day';
+
+        const meals = store.getMealPlanForDate(dateStr);
+
+        dayDiv.innerHTML = `
+            <div class="planner-day-header">
+                ${days[i]}
+                <span class="planner-day-date">${currentDay.getDate()}</span>
+            </div>
+            ${['breakfast', 'lunch', 'dinner'].map(type => `
+                <div class="planner-meal-slot ${meals[type] ? '' : 'empty'}" data-date="${dateStr}" data-type="${type}">
+                    ${meals[type] ? `
+                        <div class="planner-meal-name">${meals[type].name}</div>
+                        <div class="planner-meal-type">${type}</div>
+                    ` : `+ Add ${type}`}
+                </div>
+            `).join('')}
+        `;
+
+        plannerGrid.appendChild(dayDiv);
+    }
+
+    // Add click listeners to meal slots
+    document.querySelectorAll('.planner-meal-slot').forEach(slot => {
+        slot.addEventListener('click', (e) => {
+            const date = e.currentTarget.dataset.date;
+            const type = e.currentTarget.dataset.type;
+            showPlannerModal(date, type);
+        });
+    });
+}
+
+function showPlannerModal(date, mealType) {
+    const modal = document.getElementById('planner-modal');
+    const content = document.getElementById('planner-meal-select');
+
+    const allItems = [
+        ...store.meals.map(m => ({ ...m, type: 'meal' })),
+        ...store.recipes.map(r => ({ ...r, type: 'recipe' }))
+    ];
+
+    content.innerHTML = `
+        <div class="planner-modal-list">
+            ${allItems.map(item => `
+                <div class="planner-modal-item" data-id="${item.id}" data-type="${item.type}">
+                    ${item.name}
+                </div>
+            `).join('')}
+            <div class="planner-modal-item remove" data-remove="true">❌ Remove meal</div>
+        </div>
+    `;
+
+    document.querySelectorAll('.planner-modal-item').forEach(item => {
+        item.addEventListener('click', () => {
+            if (item.dataset.remove) {
+                store.removeFromMealPlan(date, mealType);
+            } else {
+                const itemData = allItems.find(i => i.id == item.dataset.id);
+                store.addToMealPlan(date, mealType, itemData);
+            }
+            renderMealPlanner();
+            closeModal(modal);
+        });
+    });
+
+    openModal(modal);
+}
+
+document.getElementById('prev-week-btn').addEventListener('click', () => {
+    currentPlannerWeek.setDate(currentPlannerWeek.getDate() - 7);
+    renderMealPlanner();
+});
+
+document.getElementById('next-week-btn').addEventListener('click', () => {
+    currentPlannerWeek.setDate(currentPlannerWeek.getDate() + 7);
+    renderMealPlanner();
+});
+
+// Shopping List
+function generateShoppingList() {
+    const ingredients = {};
+
+    Object.entries(store.mealPlan).forEach(([key, item]) => {
+        if (item.ingredients && Array.isArray(item.ingredients)) {
+            item.ingredients.forEach(ing => {
+                const name = typeof ing === 'string' ? ing : ing.name;
+                if (name && name.trim()) {
+                    if (!ingredients[name]) {
+                        ingredients[name] = { name, count: 1, checked: false };
+                    } else {
+                        ingredients[name].count++;
+                    }
+                }
+            });
+        }
+    });
+
+    const shoppingList = Object.values(ingredients);
+    store.updateShoppingList(shoppingList);
+    renderShoppingList();
+}
+
+function renderShoppingList() {
+    const container = document.getElementById('shopping-list-container');
+
+    if (store.shoppingList.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <p>No items in shopping list</p>
+                <p>Click "Generate from Planner" to create a shopping list from your meal plan.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="shopping-category">
+            <h3>Shopping List</h3>
+            ${store.shoppingList.map((item, index) => `
+                <div class="shopping-item ${item.checked ? 'checked' : ''}">
+                    <input type="checkbox" id="shop-${index}" ${item.checked ? 'checked' : ''} onchange="toggleShoppingItem(${index})">
+                    <label for="shop-${index}">${item.name}${item.count > 1 ? ` (×${item.count})` : ''}</label>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+window.toggleShoppingItem = function(index) {
+    store.shoppingList[index].checked = !store.shoppingList[index].checked;
+    store.updateShoppingList(store.shoppingList);
+    renderShoppingList();
+};
+
+document.getElementById('generate-shopping-list-btn').addEventListener('click', generateShoppingList);
+
+document.getElementById('clear-shopping-list-btn').addEventListener('click', () => {
+    if (confirm('Clear entire shopping list?')) {
+        store.updateShoppingList([]);
+        renderShoppingList();
+    }
+});
+
 // Initial Render
 renderMeals();
 renderRecipes();
 renderIngredients();
+renderMealPlanner();
+renderShoppingList();
