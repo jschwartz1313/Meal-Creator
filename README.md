@@ -10,24 +10,56 @@ A beautiful, interactive web application for tracking your favorite meals, desig
 - Add and track your favorite meals
 - Rate meals with a 5-star system
 - Categorize meals (Breakfast, Lunch, Dinner, Snack, Dessert)
-- Add personal notes for each meal
+- Mark meals as favorites with star icon
+- Duplicate meals with one click
+- Filter by category, rating, and favorites
+- Sort by name, rating, or date added
+- Add personal notes, tags, and nutritional information
+- Upload photos for meals
 - Edit and delete meals
 
 ### 📝 Recipe Management
 - Create detailed recipes with ingredients and instructions
 - Track prep time and cook time
 - Specify number of servings
+- **Scale recipes**: Adjust servings and automatically recalculate ingredient quantities
+- **Print recipes**: Print-friendly formatted view
+- Mark recipes as favorites
+- Duplicate recipes instantly
 - Manage ingredient quantities for each recipe
+- Add photos, tags, and nutritional information per serving
 - Edit and delete recipes
 
 ### 🥕 Ingredients Library
 - Build a comprehensive ingredients library
 - Categorize ingredients (Produce, Protein, Dairy, Grains, Spices, Condiments, Other)
 - Search through your ingredients
+- Mark ingredients as required or optional in meals
 - Edit and delete ingredients
 
-### 💾 Data Persistence
+### 📅 Meal Planning
+- Weekly meal planner with calendar view
+- Drag and drop meals/recipes to days
+- Plan breakfast, lunch, and dinner for each day
+- Navigate between weeks
+- Generate shopping lists from meal plans
+
+### 🛒 Shopping List
+- Auto-generate shopping lists from meal planner
+- Organize ingredients with quantity counts
+- Check off items as you shop
+- Clear list when done
+
+### 🌙 Dark Mode
+- Toggle between light and dark themes
+- Smooth transitions
+- Preference persists across sessions
+- Easy-access toggle in header
+
+### 💾 Data Management
 - All data is saved automatically to your browser's local storage
+- Export data as JSON backup
+- Import data from backup files
 - Your data persists between sessions
 - No server or account required
 
