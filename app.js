@@ -118,7 +118,7 @@ addMealBtn.addEventListener('click', () => {
 });
 
 addMealIngredientBtn.addEventListener('click', () => {
-    mealIngredients.push('');
+    mealIngredients.push({ name: '', required: 'required' });
     renderMealIngredients();
 });
 
@@ -150,8 +150,15 @@ function renderMealIngredients() {
     mealIngredients.forEach((ingredient, index) => {
         const row = document.createElement('div');
         row.className = 'meal-ingredient-row';
+        const ingredientName = typeof ingredient === 'string' ? ingredient : ingredient.name;
+        const ingredientRequired = typeof ingredient === 'string' ? 'required' : ingredient.required;
+
         row.innerHTML = `
-            <input type="text" placeholder="Ingredient name" value="${ingredient}" data-index="${index}" class="meal-ingredient-input">
+            <input type="text" placeholder="Ingredient name" value="${ingredientName}" data-index="${index}" class="meal-ingredient-input">
+            <select data-index="${index}" class="meal-ingredient-required">
+                <option value="required" ${ingredientRequired === 'required' ? 'selected' : ''}>Required</option>
+                <option value="optional" ${ingredientRequired === 'optional' ? 'selected' : ''}>Optional</option>
+            </select>
             <button type="button" class="remove-ingredient-btn" data-index="${index}">×</button>
         `;
         mealIngredientsList.appendChild(row);
@@ -161,7 +168,22 @@ function renderMealIngredients() {
     document.querySelectorAll('.meal-ingredient-input').forEach(input => {
         input.addEventListener('input', (e) => {
             const index = parseInt(e.target.dataset.index);
-            mealIngredients[index] = e.target.value;
+            if (typeof mealIngredients[index] === 'string') {
+                mealIngredients[index] = { name: e.target.value, required: 'required' };
+            } else {
+                mealIngredients[index].name = e.target.value;
+            }
+        });
+    });
+
+    document.querySelectorAll('.meal-ingredient-required').forEach(select => {
+        select.addEventListener('change', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            if (typeof mealIngredients[index] === 'string') {
+                mealIngredients[index] = { name: mealIngredients[index], required: e.target.value };
+            } else {
+                mealIngredients[index].required = e.target.value;
+            }
         });
     });
 
@@ -181,7 +203,10 @@ mealForm.addEventListener('submit', (e) => {
         name: document.getElementById('meal-name').value,
         category: document.getElementById('meal-category').value,
         rating: parseInt(document.getElementById('meal-rating').value),
-        ingredients: mealIngredients.filter(ing => ing.trim() !== ''),
+        ingredients: mealIngredients.filter(ing => {
+            const name = typeof ing === 'string' ? ing : ing.name;
+            return name.trim() !== '';
+        }),
         notes: document.getElementById('meal-notes').value
     };
 
@@ -218,7 +243,12 @@ function renderMeals() {
             <div class="recipe-ingredients">
                 <h4>Ingredients:</h4>
                 <ul>
-                    ${meal.ingredients.map(ing => `<li>${ing}</li>`).join('')}
+                    ${meal.ingredients.map(ing => {
+                        const name = typeof ing === 'string' ? ing : ing.name;
+                        const required = typeof ing === 'string' ? 'required' : ing.required;
+                        const badge = required === 'optional' ? ' <span class="optional-badge">(optional)</span>' : '';
+                        return `<li>${name}${badge}</li>`;
+                    }).join('')}
                 </ul>
             </div>
         ` : '';

@@ -227,6 +227,13 @@ main {
     color: white;
 }
 
+.optional-badge {
+    font-size: 0.75rem;
+    color: #95a5a6;
+    font-style: italic;
+    font-weight: normal;
+}
+
 .card-actions {
     display: flex;
     gap: 0.5rem;
@@ -518,7 +525,23 @@ form {
 }
 
 .meal-ingredient-row input {
+    flex: 2;
+}
+
+.meal-ingredient-row select {
+    padding: 0.5rem;
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background-color: white;
+    cursor: pointer;
     flex: 1;
+}
+
+.meal-ingredient-row select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
 }
 
 .remove-ingredient-btn {
