@@ -519,12 +519,24 @@ document.getElementById('times-made-decrease').addEventListener('click', () => {
     const current = parseInt(historyTimesMadeInput.value) || 0;
     if (current > 0) {
         historyTimesMadeInput.value = current - 1;
+        // If decreasing to 0, also clear the date
+        if (current - 1 === 0) {
+            historyLastMadeInput.value = '';
+        }
     }
 });
 
 document.getElementById('times-made-increase').addEventListener('click', () => {
     const current = parseInt(historyTimesMadeInput.value) || 0;
     historyTimesMadeInput.value = current + 1;
+});
+
+// Clear date when times made is set to 0 via typing
+historyTimesMadeInput.addEventListener('input', () => {
+    const current = parseInt(historyTimesMadeInput.value) || 0;
+    if (current === 0) {
+        historyLastMadeInput.value = '';
+    }
 });
 
 document.getElementById('clear-last-made').addEventListener('click', () => {
