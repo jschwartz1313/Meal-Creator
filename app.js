@@ -543,7 +543,10 @@ mealHistoryForm.addEventListener('submit', (e) => {
         timesMade: timesMade
     };
 
-    if (lastMadeDate) {
+    // If times made is 0, clear the last made date as well
+    if (timesMade === 0) {
+        updateData.lastMade = null;
+    } else if (lastMadeDate) {
         // Convert date input to ISO string (at start of day in local timezone)
         updateData.lastMade = new Date(lastMadeDate + 'T12:00:00').toISOString();
     } else {
