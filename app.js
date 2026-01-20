@@ -1288,6 +1288,22 @@ document.getElementById('clear-shopping-list-btn').addEventListener('click', () 
     }
 });
 
+// Dark Mode
+const darkModeToggle = document.getElementById('dark-mode-toggle');
+const isDarkMode = localStorage.getItem('darkMode') === 'true';
+
+if (isDarkMode) {
+    document.body.classList.add('dark-mode');
+    darkModeToggle.textContent = '☀️';
+}
+
+darkModeToggle.addEventListener('click', () => {
+    document.body.classList.toggle('dark-mode');
+    const isDark = document.body.classList.contains('dark-mode');
+    localStorage.setItem('darkMode', isDark);
+    darkModeToggle.textContent = isDark ? '☀️' : '🌙';
+});
+
 // Initial Render
 renderMeals();
 renderRecipes();
