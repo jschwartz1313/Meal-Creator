@@ -253,6 +253,12 @@ main {
     background-color: var(--light-color);
 }
 
+.favorite-meal,
+.favorite-recipe {
+    color: var(--warning-color);
+    font-size: 1.3rem;
+}
+
 .rating {
     color: var(--warning-color);
     font-size: 1.2rem;
@@ -277,6 +283,44 @@ main {
     display: flex;
     align-items: center;
     gap: 0.3rem;
+}
+
+.servings-scaler {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 0.5rem 0;
+    justify-content: center;
+}
+
+.scale-btn {
+    background-color: var(--secondary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.scale-btn:hover {
+    background-color: #45b8b0;
+    transform: translateY(-1px);
+}
+
+.scale-reset {
+    background-color: #95a5a6;
+}
+
+.scale-reset:hover {
+    background-color: #7f8c8d;
+}
+
+.servings-display {
+    font-weight: 700;
+    color: var(--primary-color);
 }
 
 .recipe-ingredients {

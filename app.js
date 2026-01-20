@@ -317,8 +317,32 @@ function renderMeals() {
 
         const matchesRating = !mealFilters.rating || meal.rating >= parseInt(mealFilters.rating);
 
-        return matchesSearch && matchesCategory && matchesRating;
+        const matchesFavorite = !mealFilters.favorite || meal.favorite === true;
+
+        return matchesSearch && matchesCategory && matchesRating && matchesFavorite;
     });
+
+    // Apply sorting
+    if (mealFilters.sort) {
+        filteredMeals.sort((a, b) => {
+            switch (mealFilters.sort) {
+                case 'name-asc':
+                    return a.name.localeCompare(b.name);
+                case 'name-desc':
+                    return b.name.localeCompare(a.name);
+                case 'rating-desc':
+                    return b.rating - a.rating;
+                case 'rating-asc':
+                    return a.rating - b.rating;
+                case 'newest':
+                    return b.id - a.id;
+                case 'oldest':
+                    return a.id - b.id;
+                default:
+                    return 0;
+            }
+        });
+    }
 
     if (filteredMeals.length === 0) {
         mealsList.innerHTML = `
@@ -373,6 +397,8 @@ function renderMeals() {
                     <span class="card-badge">${meal.category}</span>
                 </div>
                 <div class="card-actions">
+                    <button class="icon-btn favorite-meal" data-id="${meal.id}">${meal.favorite ? '★' : '☆'}</button>
+                    <button class="icon-btn duplicate-meal" data-id="${meal.id}">📋</button>
                     <button class="icon-btn edit-meal" data-id="${meal.id}">✏️</button>
                     <button class="icon-btn delete-meal" data-id="${meal.id}">🗑️</button>
                 </div>
@@ -388,6 +414,14 @@ function renderMeals() {
     });
 
     // Add event listeners
+    document.querySelectorAll('.favorite-meal').forEach(btn => {
+        btn.addEventListener('click', () => toggleMealFavorite(parseInt(btn.dataset.id)));
+    });
+
+    document.querySelectorAll('.duplicate-meal').forEach(btn => {
+        btn.addEventListener('click', () => duplicateMeal(parseInt(btn.dataset.id)));
+    });
+
     document.querySelectorAll('.edit-meal').forEach(btn => {
         btn.addEventListener('click', () => editMeal(parseInt(btn.dataset.id)));
     });
@@ -400,6 +434,28 @@ function renderMeals() {
             }
         });
     });
+}
+
+function toggleMealFavorite(id) {
+    const meal = store.meals.find(m => m.id === id);
+    if (!meal) return;
+
+    store.updateMeal(id, { favorite: !meal.favorite });
+    renderMeals();
+}
+
+function duplicateMeal(id) {
+    const meal = store.meals.find(m => m.id === id);
+    if (!meal) return;
+
+    const duplicatedMeal = {
+        ...meal,
+        name: `${meal.name} (Copy)`,
+        id: undefined
+    };
+
+    store.addMeal(duplicatedMeal);
+    renderMeals();
 }
 
 function editMeal(id) {
@@ -561,18 +617,28 @@ function renderRecipes() {
                     <div class="card-title">${recipe.name}</div>
                 </div>
                 <div class="card-actions">
+                    <button class="icon-btn favorite-recipe" data-id="${recipe.id}">${recipe.favorite ? '★' : '☆'}</button>
+                    <button class="icon-btn print-recipe" data-id="${recipe.id}">🖨️</button>
+                    <button class="icon-btn duplicate-recipe" data-id="${recipe.id}">📋</button>
                     <button class="icon-btn edit-recipe" data-id="${recipe.id}">✏️</button>
                     <button class="icon-btn delete-recipe" data-id="${recipe.id}">🗑️</button>
                 </div>
             </div>
             <div class="recipe-meta">
                 <div class="recipe-meta-item">⏱️ ${totalTime} min</div>
-                <div class="recipe-meta-item">🍽️ ${recipe.servings} servings</div>
+                <div class="recipe-meta-item">
+                    🍽️ <span class="servings-display" data-id="${recipe.id}">${recipe.servings}</span> servings
+                </div>
             </div>
-            <div class="recipe-ingredients">
+            <div class="servings-scaler">
+                <button class="scale-btn" data-id="${recipe.id}" data-action="decrease">−</button>
+                <button class="scale-btn scale-reset" data-id="${recipe.id}" data-action="reset">Reset</button>
+                <button class="scale-btn" data-id="${recipe.id}" data-action="increase">+</button>
+            </div>
+            <div class="recipe-ingredients" data-recipe-id="${recipe.id}">
                 <h4>Ingredients:</h4>
-                <ul>
-                    ${recipe.ingredients.map(ing => `<li>${ing.quantity} ${ing.name}</li>`).join('')}
+                <ul class="ingredients-list-${recipe.id}">
+                    ${recipe.ingredients.map(ing => `<li><span class="ingredient-quantity">${ing.quantity}</span> ${ing.name}</li>`).join('')}
                 </ul>
             </div>
             <div class="card-notes">${recipe.instructions.substring(0, 100)}${recipe.instructions.length > 100 ? '...' : ''}</div>
@@ -582,6 +648,18 @@ function renderRecipes() {
     });
 
     // Add event listeners
+    document.querySelectorAll('.favorite-recipe').forEach(btn => {
+        btn.addEventListener('click', () => toggleRecipeFavorite(parseInt(btn.dataset.id)));
+    });
+
+    document.querySelectorAll('.print-recipe').forEach(btn => {
+        btn.addEventListener('click', () => printRecipe(parseInt(btn.dataset.id)));
+    });
+
+    document.querySelectorAll('.duplicate-recipe').forEach(btn => {
+        btn.addEventListener('click', () => duplicateRecipe(parseInt(btn.dataset.id)));
+    });
+
     document.querySelectorAll('.edit-recipe').forEach(btn => {
         btn.addEventListener('click', () => editRecipe(parseInt(btn.dataset.id)));
     });
@@ -594,6 +672,192 @@ function renderRecipes() {
             }
         });
     });
+
+    document.querySelectorAll('.scale-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = parseInt(btn.dataset.id);
+            const action = btn.dataset.action;
+            scaleRecipe(id, action);
+        });
+    });
+}
+
+function printRecipe(id) {
+    const recipe = store.recipes.find(r => r.id === id);
+    if (!recipe) return;
+
+    const totalTime = recipe.prepTime + recipe.cookTime;
+    const nutritionHTML = recipe.nutrition && (recipe.nutrition.calories || recipe.nutrition.protein || recipe.nutrition.carbs || recipe.nutrition.fat) ? `
+        <div class="print-nutrition">
+            <h3>Nutrition Per Serving</h3>
+            ${recipe.nutrition.calories ? `<p>Calories: ${recipe.nutrition.calories} kcal</p>` : ''}
+            ${recipe.nutrition.protein ? `<p>Protein: ${recipe.nutrition.protein}g</p>` : ''}
+            ${recipe.nutrition.carbs ? `<p>Carbs: ${recipe.nutrition.carbs}g</p>` : ''}
+            ${recipe.nutrition.fat ? `<p>Fat: ${recipe.nutrition.fat}g</p>` : ''}
+        </div>
+    ` : '';
+
+    const printWindow = window.open('', '', 'width=800,height=600');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${recipe.name} - Recipe</title>
+            <style>
+                @media print {
+                    body { margin: 0; }
+                }
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                    max-width: 800px;
+                    margin: 40px auto;
+                    padding: 20px;
+                    line-height: 1.6;
+                }
+                h1 { color: #ff6b6b; border-bottom: 3px solid #ff6b6b; padding-bottom: 10px; }
+                h2 { color: #2d3436; margin-top: 30px; }
+                h3 { color: #2d3436; margin-top: 20px; }
+                .recipe-meta { display: flex; gap: 30px; margin: 20px 0; color: #636e72; }
+                .recipe-meta p { margin: 5px 0; }
+                .ingredients ul { list-style: none; padding-left: 0; }
+                .ingredients li { padding: 5px 0; }
+                .ingredients li:before { content: '• '; color: #ff6b6b; font-weight: bold; }
+                .instructions { white-space: pre-wrap; margin-top: 10px; }
+                .print-nutrition p { margin: 5px 0; }
+                @media print {
+                    .no-print { display: none; }
+                }
+                .print-btn {
+                    background-color: #ff6b6b;
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-size: 16px;
+                    margin-bottom: 20px;
+                }
+                .print-btn:hover { background-color: #ee5a5a; }
+            </style>
+        </head>
+        <body>
+            <button class="print-btn no-print" onclick="window.print()">Print Recipe</button>
+            <h1>${recipe.name}</h1>
+            <div class="recipe-meta">
+                <div>
+                    <p><strong>Servings:</strong> ${recipe.servings}</p>
+                    <p><strong>Prep Time:</strong> ${recipe.prepTime} minutes</p>
+                    <p><strong>Cook Time:</strong> ${recipe.cookTime} minutes</p>
+                    <p><strong>Total Time:</strong> ${totalTime} minutes</p>
+                </div>
+            </div>
+            <div class="ingredients">
+                <h2>Ingredients</h2>
+                <ul>
+                    ${recipe.ingredients.map(ing => `<li>${ing.quantity} ${ing.name}</li>`).join('')}
+                </ul>
+            </div>
+            <div>
+                <h2>Instructions</h2>
+                <div class="instructions">${recipe.instructions}</div>
+            </div>
+            ${nutritionHTML}
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
+function scaleRecipe(id, action) {
+    const recipe = store.recipes.find(r => r.id === id);
+    if (!recipe) return;
+
+    const servingsDisplay = document.querySelector(`.servings-display[data-id="${id}"]`);
+    let currentServings = parseInt(servingsDisplay.textContent);
+
+    if (action === 'increase') {
+        currentServings++;
+    } else if (action === 'decrease' && currentServings > 1) {
+        currentServings--;
+    } else if (action === 'reset') {
+        currentServings = recipe.servings;
+    }
+
+    servingsDisplay.textContent = currentServings;
+
+    const multiplier = currentServings / recipe.servings;
+    const ingredientsList = document.querySelector(`.ingredients-list-${id}`);
+
+    ingredientsList.innerHTML = recipe.ingredients.map(ing => {
+        const scaledQuantity = scaleQuantity(ing.quantity, multiplier);
+        return `<li><span class="ingredient-quantity">${scaledQuantity}</span> ${ing.name}</li>`;
+    }).join('');
+}
+
+function scaleQuantity(quantityStr, multiplier) {
+    const match = quantityStr.match(/^([\d.\/]+)\s*(.*)$/);
+    if (!match) return quantityStr;
+
+    let [, numPart, unit] = match;
+
+    // Handle fractions
+    if (numPart.includes('/')) {
+        const parts = numPart.split('/');
+        numPart = parseFloat(parts[0]) / parseFloat(parts[1]);
+    } else {
+        numPart = parseFloat(numPart);
+    }
+
+    const scaled = numPart * multiplier;
+
+    // Format nicely
+    if (scaled % 1 === 0) {
+        return `${scaled}${unit ? ' ' + unit : ''}`;
+    } else if (scaled < 1) {
+        // Try to convert to fraction
+        const fraction = decimalToFraction(scaled);
+        return `${fraction}${unit ? ' ' + unit : ''}`;
+    } else {
+        return `${scaled.toFixed(2)}${unit ? ' ' + unit : ''}`;
+    }
+}
+
+function decimalToFraction(decimal) {
+    const commonFractions = {
+        0.25: '1/4', 0.33: '1/3', 0.5: '1/2',
+        0.66: '2/3', 0.75: '3/4'
+    };
+
+    const rounded = Math.round(decimal * 100) / 100;
+    for (let [dec, frac] of Object.entries(commonFractions)) {
+        if (Math.abs(parseFloat(dec) - rounded) < 0.05) {
+            return frac;
+        }
+    }
+
+    return decimal.toFixed(2);
+}
+
+function toggleRecipeFavorite(id) {
+    const recipe = store.recipes.find(r => r.id === id);
+    if (!recipe) return;
+
+    store.updateRecipe(id, { favorite: !recipe.favorite });
+    renderRecipes();
+}
+
+function duplicateRecipe(id) {
+    const recipe = store.recipes.find(r => r.id === id);
+    if (!recipe) return;
+
+    const duplicatedRecipe = {
+        ...recipe,
+        name: `${recipe.name} (Copy)`,
+        id: undefined
+    };
+
+    store.addRecipe(duplicatedRecipe);
+    renderRecipes();
 }
 
 function editRecipe(id) {
@@ -794,11 +1058,15 @@ importFileInput.addEventListener('change', (e) => {
 const mealSearch = document.getElementById('meal-search');
 const mealFilterCategory = document.getElementById('meal-filter-category');
 const mealFilterRating = document.getElementById('meal-filter-rating');
+const mealFilterFavorite = document.getElementById('meal-filter-favorite');
+const mealSort = document.getElementById('meal-sort');
 
 let mealFilters = {
     search: '',
     category: '',
-    rating: ''
+    rating: '',
+    favorite: '',
+    sort: ''
 };
 
 mealSearch.addEventListener('input', (e) => {
@@ -813,6 +1081,16 @@ mealFilterCategory.addEventListener('change', (e) => {
 
 mealFilterRating.addEventListener('change', (e) => {
     mealFilters.rating = e.target.value;
+    renderMeals();
+});
+
+mealFilterFavorite.addEventListener('change', (e) => {
+    mealFilters.favorite = e.target.value;
+    renderMeals();
+});
+
+mealSort.addEventListener('change', (e) => {
+    mealFilters.sort = e.target.value;
     renderMeals();
 });
 
