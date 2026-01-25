@@ -809,12 +809,42 @@ form {
     font-size: 0.9rem;
 }
 
-.recipe-ingredient-row input:first-child {
+.recipe-ingredient-row .ingredient-name-input {
     flex: 2;
 }
 
-.recipe-ingredient-row input:last-child {
+.recipe-ingredient-row .ingredient-quantity-input {
     flex: 1;
+}
+
+/* Reorder Buttons */
+.reorder-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.reorder-btn {
+    background: var(--light-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    line-height: 1;
+    color: var(--text-color);
+    transition: all 0.2s;
+}
+
+.reorder-btn:hover:not(:disabled) {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.reorder-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
 }
 
 .meal-ingredient-row input {

@@ -220,6 +220,10 @@ function renderMealIngredients() {
         const ingredientRequired = typeof ingredient === 'string' ? 'required' : ingredient.required;
 
         row.innerHTML = `
+            <div class="reorder-btns">
+                <button type="button" class="reorder-btn move-up-btn" data-index="${index}" ${index === 0 ? 'disabled' : ''}>▲</button>
+                <button type="button" class="reorder-btn move-down-btn" data-index="${index}" ${index === mealIngredients.length - 1 ? 'disabled' : ''}>▼</button>
+            </div>
             <input type="text" placeholder="Ingredient name" value="${ingredientName}" data-index="${index}" class="meal-ingredient-input">
             <select data-index="${index}" class="meal-ingredient-required">
                 <option value="required" ${ingredientRequired === 'required' ? 'selected' : ''}>Required</option>
@@ -258,6 +262,27 @@ function renderMealIngredients() {
             const index = parseInt(e.target.dataset.index);
             mealIngredients.splice(index, 1);
             renderMealIngredients();
+        });
+    });
+
+    // Move up/down listeners for meal ingredients
+    document.querySelectorAll('.meal-ingredient-row .move-up-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            if (index > 0) {
+                [mealIngredients[index], mealIngredients[index - 1]] = [mealIngredients[index - 1], mealIngredients[index]];
+                renderMealIngredients();
+            }
+        });
+    });
+
+    document.querySelectorAll('.meal-ingredient-row .move-down-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            if (index < mealIngredients.length - 1) {
+                [mealIngredients[index], mealIngredients[index + 1]] = [mealIngredients[index + 1], mealIngredients[index]];
+                renderMealIngredients();
+            }
         });
     });
 }
@@ -656,6 +681,10 @@ function renderRecipeIngredients() {
         const row = document.createElement('div');
         row.className = 'recipe-ingredient-row';
         row.innerHTML = `
+            <div class="reorder-btns">
+                <button type="button" class="reorder-btn move-up-btn" data-index="${index}" ${index === 0 ? 'disabled' : ''}>▲</button>
+                <button type="button" class="reorder-btn move-down-btn" data-index="${index}" ${index === recipeIngredients.length - 1 ? 'disabled' : ''}>▼</button>
+            </div>
             <input type="text" placeholder="Ingredient name" value="${ingredient.name}" data-index="${index}" class="ingredient-name-input">
             <input type="text" placeholder="Amount" value="${ingredient.quantity}" data-index="${index}" class="ingredient-quantity-input">
             <button type="button" class="remove-ingredient-btn" data-index="${index}">×</button>
@@ -678,11 +707,32 @@ function renderRecipeIngredients() {
         });
     });
 
-    document.querySelectorAll('.remove-ingredient-btn').forEach(btn => {
+    document.querySelectorAll('#recipe-ingredients-list .remove-ingredient-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const index = parseInt(e.target.dataset.index);
             recipeIngredients.splice(index, 1);
             renderRecipeIngredients();
+        });
+    });
+
+    // Move up/down listeners for recipe ingredients
+    document.querySelectorAll('#recipe-ingredients-list .move-up-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            if (index > 0) {
+                [recipeIngredients[index], recipeIngredients[index - 1]] = [recipeIngredients[index - 1], recipeIngredients[index]];
+                renderRecipeIngredients();
+            }
+        });
+    });
+
+    document.querySelectorAll('#recipe-ingredients-list .move-down-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            if (index < recipeIngredients.length - 1) {
+                [recipeIngredients[index], recipeIngredients[index + 1]] = [recipeIngredients[index + 1], recipeIngredients[index]];
+                renderRecipeIngredients();
+            }
         });
     });
 }
